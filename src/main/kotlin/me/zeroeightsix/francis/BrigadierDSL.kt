@@ -4,12 +4,18 @@ import com.mojang.brigadier.builder.ArgumentBuilder
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.mojang.brigadier.builder.RequiredArgumentBuilder
 import com.mojang.brigadier.context.CommandContext
+import com.mojang.brigadier.tree.LiteralCommandNode
 
 @DslMarker
 @Target(AnnotationTarget.TYPE)
 annotation class BrigadierDsl
 
 infix fun <S> CommandDispatcher<S>.register(builder: LiteralArgumentBuilder<S>) = this.register(builder)
+
+fun <S> CommandDispatcher<S>.registerAndAlias(builder: LiteralArgumentBuilder<S>, vararg aliases: String) {
+    val node = this.register(builder)
+    for (alias in aliases) this.register(node.alias(alias))
+}
 
 /**
  * Creates a new [LiteralArgumentBuilder] without a parent.
@@ -130,3 +136,15 @@ infix fun <S> ArgumentBuilder<S, *>.does(command: (@BrigadierDsl CommandContext<
  * @see CommandContext.getArgument
  */
 inline infix fun <reified R, S> String.from(ctx: CommandContext<S>) = ctx.getArgument(this, R::class.java)
+
+fun <S> LiteralCommandNode<S>.alias(alias: String): LiteralArgumentBuilder<S> {
+    val builder = rootLiteral<S>(alias) {}
+        .requires(this.requirement)
+        .forward(this.redirect, this.redirectModifier, this.isFork)
+        .executes(this.command)
+    for (child in this.children) {
+        builder.then(child)
+    }
+
+    return builder
+}
