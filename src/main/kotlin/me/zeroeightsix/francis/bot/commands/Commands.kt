@@ -24,13 +24,15 @@ import org.slf4j.LoggerFactory
 import registerAndAlias
 import rootLiteral
 import string
+import java.time.Duration
+import java.time.Instant
 
 object Commands : CommandDispatcher<Context>() {
 
     private val log = LoggerFactory.getLogger("commands")
 
     init {
-        Balance; Send; Florida
+        Balance; Send; Florida; Praise
     }
 
     data class Context(val message: ChatMessage, val bot: Bot, val emitter: Emitter) {
@@ -118,6 +120,44 @@ object Commands : CommandDispatcher<Context>() {
                         }
                     })
                 } ?: log.error("Failed to load florida.txt")
+        }
+    }
+
+    object Praise {
+        private val rewardedAt = HashMap<PlayerID, Instant>()
+        private const val rewardTimeout = 12 * 60 * 60L // 12 hours
+
+        init {
+            registerAndAlias(rootLiteral("praise") {
+                does { ctx ->
+                    val sender = ctx.source.message.sender
+                    // if the timeout is still in effect, quit
+                    rewardedAt[sender.uuid]?.plusSeconds(rewardTimeout)?.let { expire ->
+                        val now = Instant.now()
+                        if (expire.isAfter(now)) {
+                            val time = Duration.between(now, expire)
+                            throw "Too early! You need to wait ${time.toHours()} hours and ${time.toMinutesPart()} minutes before praising once more."()
+                        }
+                    }
+
+                    // place a new timeout
+                    rewardedAt[sender.uuid] = Instant.now()
+
+                    // award the player
+                    Database.connection.use { con ->
+                        con.prepare(
+                            "update users set balance=users.balance+55 where uuid=?",
+                            sender.uuid
+                        ).executeUpdate()
+                    }
+
+                    ctx.source.reply("Praise Francis! You were awarded 55 prayers for your devotion.")
+
+                    log.info("Rewarded $sender for praising (55 prayers)")
+
+                    SINGLE_SUCCESS
+                }
+            }, "p")
         }
     }
 
