@@ -76,6 +76,22 @@ class Francis : Bot {
                     }
                 }
             }
+
+            // fetch messages for this user
+            Database.connection.use { con ->
+                val set =
+                    con.prepare("select message from messages where delivered=0 and recipient=?", player.uuid).executeQuery()
+
+                var empty = true
+                while (set.next()) {
+                    empty = false
+                    val message = set.getString("message")
+                    schedule(ChatMessage(onlineStatus.context, message, onlineStatus.context, player), emitter)
+                }
+
+                if (!empty)
+                    con.prepare("update messages set delivered=1 where recipient=?", player.uuid).executeUpdate()
+            }
         }
     }
 

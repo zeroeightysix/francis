@@ -8,6 +8,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType
 import does
 import from
+import greedyString
 import integer
 import me.zeroeightsix.francis.ChatMessage
 import me.zeroeightsix.francis.PlayerID
@@ -30,9 +31,10 @@ import java.time.Instant
 object Commands : CommandDispatcher<Context>() {
 
     private val log = LoggerFactory.getLogger("commands")
+    private val unknownPlayerException = SimpleCommandExceptionType(LiteralMessage("I don't know anyone by that name"))
 
     init {
-        Balance; Send; Florida; Praise
+        Balance; Send; Florida; Praise; Message
     }
 
     data class Context(val message: ChatMessage, val bot: Bot, val emitter: Emitter) {
@@ -75,7 +77,7 @@ object Commands : CommandDispatcher<Context>() {
                                 }
 
                                 val recipient = con.getUUID(recipientUsername)
-                                    ?: throw "I don't know anyone by that name"()
+                                    ?: throw unknownPlayerException.create()
 
                                 if (sender.uuid == recipient) throw "You can't send prayers to yourself!"()
 
@@ -99,27 +101,6 @@ object Commands : CommandDispatcher<Context>() {
                     }
                 }
             }, "pay")
-        }
-    }
-
-    object Florida {
-        init {
-            this::class.java.classLoader.getResource("florida.txt")
-                ?.readText()
-                ?.lines()
-                ?.let { lines ->
-                    register(rootLiteral("florida") {
-                        does { ctx: CommandContext<Context> ->
-                            val cost = incurCost(90, ctx.source.message.sender.uuid)
-
-                            val line = lines.random()
-                            ctx.source.reply(line, ChatMessage.PM.FORCE_PUBLIC)
-                            ctx.source.reply("Thank you for spreading the news. An editorial fee of $cost prayers was deducted from your balance.", ChatMessage.PM.FORCE_PM)
-
-                            SINGLE_SUCCESS
-                        }
-                    })
-                } ?: log.error("Failed to load florida.txt")
         }
     }
 
@@ -158,6 +139,57 @@ object Commands : CommandDispatcher<Context>() {
                     SINGLE_SUCCESS
                 }
             }, "p")
+        }
+    }
+
+    object Florida {
+        init {
+            this::class.java.classLoader.getResource("florida.txt")
+                ?.readText()
+                ?.lines()
+                ?.let { lines ->
+                    register(rootLiteral("florida") {
+                        does { ctx: CommandContext<Context> ->
+                            val cost = incurCost(90, ctx.source.message.sender.uuid)
+
+                            val line = lines.random()
+                            ctx.source.reply(line, ChatMessage.PM.FORCE_PUBLIC)
+                            ctx.source.reply("Thank you for spreading the news. An editorial fee of $cost prayers was deducted from your balance.", ChatMessage.PM.FORCE_PM)
+
+                            SINGLE_SUCCESS
+                        }
+                    })
+                } ?: log.error("Failed to load florida.txt")
+        }
+    }
+
+    object Message {
+        init {
+            registerAndAlias(rootLiteral("message") {
+                string("player") {
+                    greedyString("message") {
+                        does { ctx ->
+                            val sender = ctx.source.message.sender.uuid
+                            val cost = incurCost(60, sender)
+
+                            Database.connection.use { con ->
+                                val recipient = con.getUUID("player" from ctx)
+                                    ?: throw unknownPlayerException.create()
+
+                                con.prepare(
+                                    "insert into messages (sender, recipient, message) values (?, ?, ?)",
+                                    sender,
+                                    recipient,
+                                    "message".from<String, Context>(ctx)
+                                ).executeUpdate()
+                            }
+                            ctx.source.reply("Thank you. Your message will be passed on anonymously. A processing fee of $cost prayers was deducted from your balance.")
+
+                            SINGLE_SUCCESS
+                        }
+                    }
+                }
+            }, "w")
         }
     }
 
