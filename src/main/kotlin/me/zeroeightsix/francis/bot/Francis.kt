@@ -4,8 +4,10 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException
 import me.zeroeightsix.francis.ChatMessage
 import me.zeroeightsix.francis.Player
 import me.zeroeightsix.francis.PlayerID
+import me.zeroeightsix.francis.PlayerOnlineStatus
 import me.zeroeightsix.francis.bot.commands.Commands
 import me.zeroeightsix.francis.communicate.Database
+import me.zeroeightsix.francis.communicate.Database.getJoinMessage
 import me.zeroeightsix.francis.communicate.Database.prepare
 import me.zeroeightsix.francis.communicate.Emitter
 import org.slf4j.LoggerFactory
@@ -15,12 +17,13 @@ class Francis : Bot {
 
     private val rewardTimeout = 5 * 60L // 5 minutes
     private val rewardedAt = HashMap<PlayerID, Instant>()
+    private val lastLeave = HashMap<PlayerID, Instant>()
     private val log = LoggerFactory.getLogger("bot")
     private val queue = ChatQueue().apply {
         start()
     }
 
-    override fun respondTo(cm: ChatMessage, emitter: Emitter) {
+    override fun onChatMessage(cm: ChatMessage, emitter: Emitter) {
         // we're not interested in bots and people without UUIDs
         val sender = cm.sender
         if (sender.isFugitive() || cm.isBotMessage()) return
@@ -47,6 +50,31 @@ class Francis : Bot {
                     emitter
                 )
                 e.printStackTrace()
+            }
+        }
+    }
+
+    override fun onPlayerOnlineStatus(onlineStatus: PlayerOnlineStatus, emitter: Emitter) {
+        val player = onlineStatus.player
+        val now = Instant.now()
+        if (!onlineStatus.online) {
+            lastLeave[player.uuid] = now
+        } else if (!onlineStatus.discovery) {
+            // if it has been over 5 minutes since this player left
+            if (lastLeave[player.uuid]?.plusSeconds(5 * 60L)?.isBefore(now) != false) {
+                // Send their JM, if any
+                Database.connection.use { con ->
+                    con.getJoinMessage(player.uuid)?.let { jm ->
+                        schedule(
+                            ChatMessage(
+                                onlineStatus.context,
+                                jm,
+                                onlineStatus.context,
+                                null
+                            ), emitter
+                        )
+                    }
+                }
             }
         }
     }

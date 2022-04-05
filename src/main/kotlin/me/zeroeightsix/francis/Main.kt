@@ -29,6 +29,9 @@ data class Player(val username: String, val uuid: PlayerID) {
 }
 
 @Serializable
+data class PlayerOnlineStatus(val context: Player, val player: Player, val online: Boolean, val discovery: Boolean)
+
+@Serializable
 data class ChatMessage(
     /**
      * The bot this message belongs to

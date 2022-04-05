@@ -36,8 +36,8 @@ object Database {
     username     varchar(16)                          not null,
     first_seen   timestamp  default current_timestamp not null,
     opted_out    tinyint(1) default 0                 not null,
-    join_message longtext                             null,
-    discord      longtext                             null,
+    join_message tinytext                             null,
+    discord      tinytext                             null,
     balance      int        default 0                 not null,
     faith        float      default 0                 not null
 );"""
@@ -48,7 +48,7 @@ object Database {
 (
     sender    varchar(36)          not null,
     recipient varchar(36)          not null,
-    message   longtext             not null,
+    message   tinytext             not null,
     delivered tinyint(1) default 0 not null,
     constraint fk_messages_recipient__uuid
         foreign key (recipient) references users (uuid),
@@ -85,6 +85,12 @@ object Database {
         return prepare("select balance, faith from users where uuid=?", uuid)
             .executeQuery()
             .run { if (next()) getInt("balance") to getFloat("faith") else null }
+    }
+
+    fun Connection.getJoinMessage(uuid: PlayerID): String? {
+        return prepare("select join_message from users where uuid=?", uuid)
+            .executeQuery()
+            .run { if (next()) getString("join_message") else null }
     }
 
     fun Connection.getUUID(username: String): PlayerID? {
