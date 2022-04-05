@@ -35,7 +35,7 @@ object Commands : CommandDispatcher<Context>() {
 
     data class Context(val message: ChatMessage, val bot: Bot, val emitter: Emitter) {
         fun reply(message: String, pm: ChatMessage.PM = ChatMessage.PM.SAME_CHANNEL) {
-            return emitter.emitChat(this.message.reply(message, pm))
+            bot.schedule(this.message.reply(message, pm), emitter)
         }
     }
 

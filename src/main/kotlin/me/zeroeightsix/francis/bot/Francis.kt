@@ -16,6 +16,9 @@ class Francis : Bot {
     private val rewardTimeout = 5 * 60L // 5 minutes
     private val rewardedAt = HashMap<PlayerID, Instant>()
     private val log = LoggerFactory.getLogger("bot")
+    private val queue = ChatQueue().apply {
+        start()
+    }
 
     override fun respondTo(cm: ChatMessage, emitter: Emitter) {
         // we're not interested in bots and people without UUIDs
@@ -36,15 +39,20 @@ class Francis : Bot {
             try {
                 Commands.execute(parse)
             } catch (e: CommandSyntaxException) {
-                emitter.emitChat(
+                schedule(
                     cm.reply(
                         e.message ?: "I'm sorry, but I couldn't process your command.",
                         ChatMessage.PM.FORCE_PM
-                    )
+                    ),
+                    emitter
                 )
                 e.printStackTrace()
             }
         }
+    }
+
+    override fun schedule(cm: ChatMessage, emitter: Emitter) {
+        this.queue.add(cm, emitter)
     }
 
     private fun reward(sender: Player, reward: Faith.Reward) {
