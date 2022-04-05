@@ -4,12 +4,16 @@ import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import me.zeroeightsix.francis.Config
 import me.zeroeightsix.francis.Player
+import me.zeroeightsix.francis.PlayerID
 import org.intellij.lang.annotations.Language
 import java.sql.Connection
 import java.sql.PreparedStatement
 
 object Database {
-    lateinit var ds: HikariDataSource
+    
+    private lateinit var ds: HikariDataSource
+    val connection: Connection
+        get() = ds.connection
 
     private fun connect(config: Config) {
         ds = HikariDataSource(HikariConfig().apply {
@@ -61,17 +65,29 @@ object Database {
      * This ensures commands can count on the player being in the DB, and that their username is up-to-date
      */
     fun assertUser(player: Player) {
-        prepare(
-            "insert into users (uuid, username) values (?, ?) on duplicate key update username=?",
-            player.uuid,
-            player.username,
-            player.username,
-        ).execute()
+        ds.connection.use {
+            it.prepare(
+                "insert into users (uuid, username) values (?, ?) on duplicate key update username=?",
+                player.uuid,
+                player.username,
+                player.username,
+            ).execute()
+        }
     }
 
-    fun prepare(@Language("SQL") sql: String, vararg params: Any) = ds.connection.prepare(sql, *params)
+    fun Connection.getBalance(uuid: PlayerID): Int {
+        return prepare("select balance from users where uuid=?", uuid)
+            .executeQuery()
+            .run { if (next()) getInt("balance") else 0 }
+    }
 
-    private fun Connection.prepare(@Language("SQL") sql: String, vararg params: Any): PreparedStatement {
+    fun Connection.getUUID(username: String): PlayerID? {
+        return prepare("select uuid from users where username=?", username)
+            .executeQuery()
+            .run { if (next()) getString("uuid") else null }
+    }
+
+    fun Connection.prepare(@Language("SQL") sql: String, vararg params: Any): PreparedStatement {
         val stmt = prepareStatement(sql)
         for ((index, value) in params.withIndex()) {
             when (value) {

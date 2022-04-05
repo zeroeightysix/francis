@@ -35,8 +35,13 @@ class Francis : Bot {
             val parse = Commands.parse(cm.message.substring(1), Commands.Context(cm, this, emitter))
             try {
                 Commands.execute(parse)
-            } catch(e: CommandSyntaxException) {
-                emitter.emitChat(cm.reply(e.message ?: "I'm sorry, but I couldn't process your command.", ChatMessage.PM.FORCE_PM))
+            } catch (e: CommandSyntaxException) {
+                emitter.emitChat(
+                    cm.reply(
+                        e.message ?: "I'm sorry, but I couldn't process your command.",
+                        ChatMessage.PM.FORCE_PM
+                    )
+                )
                 e.printStackTrace()
             }
         }
@@ -50,13 +55,15 @@ class Francis : Bot {
         rewardedAt[sender.uuid] = Instant.now()
 
         // award the player
-        prepare(
-            "update users set balance=users.balance+?, faith=users.faith + (? - users.faith) * ? where uuid=?",
-            reward.prayers,
-            reward.shiftTo,
-            reward.strength,
-            sender.uuid
-        ).executeUpdate()
+        Database.connection.use {
+            it.prepare(
+                "update users set balance=users.balance+?, faith=users.faith + (? - users.faith) * ? where uuid=?",
+                reward.prayers,
+                reward.shiftTo,
+                reward.strength,
+                sender.uuid
+            ).executeUpdate()
+        }
 
         log.info("Rewarded $sender using $reward")
     }
