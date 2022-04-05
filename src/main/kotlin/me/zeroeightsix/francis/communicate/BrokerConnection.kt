@@ -32,14 +32,22 @@ class BrokerConnection(config: Config, bot: Bot) : Emitter {
             val message = try {
                 Json.decodeFromString<ChatMessage>(String(delivery.body, Charset.forName("UTF-8")))
             } catch (e: Exception) {
-                e.printStackTrace()
+                log.error("Invalid ChatMessage received", e)
                 return@DeliverCallback
             }
 
-            log.info("${delivery.envelope.routingKey} $message")
+            log.debug("${delivery.envelope.routingKey} $message")
 
-            bot.respondTo(message, this)
-        }, CancelCallback {})
+            try {
+                bot.respondTo(message, this)
+            } catch (e: Exception) {
+                log.error("Failed processing command", e)
+                emitChat(message.reply("I'm sorry, an error occurred. Please contact a church official", ChatMessage.PM.FORCE_PM))
+            }
+        }, CancelCallback {
+            log.error("$it died")
+            // TODO: Recover?
+        })
     }
 
     override fun emitChat(message: ChatMessage) {
