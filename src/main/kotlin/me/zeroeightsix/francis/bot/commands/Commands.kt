@@ -54,21 +54,35 @@ object Commands : CommandDispatcher<Context>() {
                         does { ctx ->
                             val sender = ctx.source.message.sender
                             val amount: Int = "amount" from ctx
+                            val recipientUsername: String = "player" from ctx
+
+                            if (amount <= 1)
+                                throw "You must send at least 1 prayer."()
+
                             Database.connection.use { con ->
                                 if (con.getBalance(sender.uuid) < amount) {
                                     throw "The provided amount exceeds your available balance."()
                                 }
 
-                                val recipient = con.getUUID("player" from ctx)
+                                val recipient = con.getUUID(recipientUsername)
                                     ?: throw "I don't know anyone by that name"()
 
                                 if (sender.uuid == recipient) throw "You can't send prayers to yourself!"()
 
-                                con.prepare("update users set balance=users.balance+? where uuid=?", -amount, sender.uuid).execute()
-                                con.prepare("update users set balance=users.balance+? where uuid=?", +amount, recipient).execute()
+                                con.autoCommit = false
+                                val stmt = con.prepare("update users set balance=users.balance+? where uuid=?")
+                                stmt.setInt(1, -amount)
+                                stmt.setString(2, sender.uuid)
+                                stmt.execute()
+
+                                stmt.setInt(1, +amount)
+                                stmt.setString(2, recipient)
+                                stmt.execute()
+                                con.commit()
+                                con.autoCommit = true
                             }
 
-                            TODO()
+                            ctx.source.reply("Sent $amount prayers to $recipientUsername!")
 
                             SINGLE_SUCCESS
                         }
