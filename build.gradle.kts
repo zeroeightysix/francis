@@ -11,6 +11,7 @@ version = "1.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
+    maven(url = "https://libraries.minecraft.net")
 }
 
 tasks.withType<KotlinCompile> {
@@ -23,6 +24,7 @@ dependencies {
     implementation("com.zaxxer:HikariCP:5.0.1")
     implementation("org.mariadb.jdbc:mariadb-java-client:3.0.4")
     implementation("ch.qos.logback:logback-classic:1.2.11")
+    implementation("com.mojang:brigadier:1.0.18")
 }
 
 application {

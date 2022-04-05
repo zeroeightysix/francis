@@ -5,6 +5,6 @@ import me.zeroeightsix.francis.communicate.Emitter
 
 interface Bot {
 
-    fun respondTo(message: ChatMessage, emitter: Emitter)
+    fun respondTo(cm: ChatMessage, emitter: Emitter)
 
 }

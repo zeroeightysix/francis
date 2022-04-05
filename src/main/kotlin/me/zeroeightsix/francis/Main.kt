@@ -9,6 +9,8 @@ import me.zeroeightsix.francis.communicate.Database
 import java.nio.file.Files
 import java.nio.file.Path
 
+typealias PlayerID = String
+
 fun main() {
     val config = Json.decodeFromString<Config>(Files.readString(Path.of("config.json")))
     Database.init(config)
@@ -17,7 +19,7 @@ fun main() {
 }
 
 @Serializable
-data class Player(val username: String, val uuid: String) {
+data class Player(val username: String, val uuid: PlayerID) {
     /**
      * @return `true` if this player has no known associated UUID
      */
@@ -43,6 +45,10 @@ data class ChatMessage(
 ) {
     fun isPM(): Boolean {
         return recipient != null
+    }
+
+    fun isBotMessage(): Boolean {
+        return context == sender
     }
 
     /**

@@ -4,7 +4,7 @@ import me.zeroeightsix.francis.ChatMessage
 import kotlin.math.log10
 
 object Faith {
-    fun reward(message: ChatMessage, faith: Float): Pair<Int, Float> {
+    fun reward(message: ChatMessage): Reward? {
         val text = message.message.lowercase()
         if (text.contains("hate francis")
             || text.contains("francis died")
@@ -12,15 +12,15 @@ object Faith {
             || text.contains("killed francis")
             || (text.contains("francis") && text.contains("is dead"))
         ) {
-            return (0 to demote(faith))
+            return Reward.BAD
         }
         if (text.contains("francis")
             && (text.contains("praise") || text.contains("love") || text.contains("god"))
         ) {
-            return (3 to promote(faith))
+            return Reward.GOOD
         }
 
-        return (0 to 0f)
+        return null
     }
 
     // Calculates a discount, which is a percentage ranging from ]-infinity; 0.4].
@@ -45,17 +45,12 @@ object Faith {
         return (0.4f * log10(5f * faith + 5f) - 0.279588f) * 3.321928f
     }
 
-    // Calculates a new faith value, in favour of the Francis side, returning the delta
-    fun promote(faith: Float): Float {
-        return map_faith(1f, 0.1f, faith)
-    }
+    enum class Reward(val prayers: Int, val shiftTo: Float, val strength: Float) {
+        GOOD(3, 1f, .1f),
+        BAD(0, -1f, .15f);
 
-    // Calculates a new faith value, in favour of the wilburian side, returning the delta
-    fun demote(faith: Float): Float {
-        return map_faith(-1f, 0.15f, faith)
-    }
-
-    fun map_faith(to: Float, scale: Float, faith: Float): Float {
-        return (to - faith) * scale
+        override fun toString(): String {
+            return "Reward(prayers=$prayers, shiftTo=$shiftTo, strength=$strength)"
+        }
     }
 }
