@@ -81,6 +81,12 @@ object Database {
             .run { if (next()) getInt("balance") else 0 }
     }
 
+    fun Connection.getBalanceFaith(uuid: PlayerID): Pair<Int, Float>? {
+        return prepare("select balance, faith from users where uuid=?", uuid)
+            .executeQuery()
+            .run { if (next()) getInt("balance") to getFloat("faith") else null }
+    }
+
     fun Connection.getUUID(username: String): PlayerID? {
         return prepare("select uuid from users where username=?", username)
             .executeQuery()

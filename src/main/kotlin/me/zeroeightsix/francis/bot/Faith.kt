@@ -24,7 +24,7 @@ object Faith {
     }
 
     // Calculates a discount, which is a percentage ranging from ]-infinity; 0.4].
-    fun calculate_discount(faith: Float): Float {
+    fun calculateDiscount(faith: Float): Float {
         // Discounts are created using a logarithmic graph.
         // Good francillians get a reasonable, but not too large discount.
         // Wilburians get heavy negative discounts, with true wilburians at -infinity.
