@@ -68,7 +68,7 @@ object Commands : CommandDispatcher<Context>() {
                             val amount: Int = "amount" from ctx
                             val recipientUsername: String = "player" from ctx
 
-                            if (amount <= 1)
+                            if (amount < 1)
                                 throw "You must send at least 1 prayer."()
 
                             Database.connection.use { con ->
