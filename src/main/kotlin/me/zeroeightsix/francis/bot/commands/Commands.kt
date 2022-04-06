@@ -54,7 +54,7 @@ object Commands : CommandDispatcher<Context>() {
 
                     SINGLE_SUCCESS
                 }
-            }, "b")
+            }, "b", "bal")
         }
     }
 
