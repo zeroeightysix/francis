@@ -34,7 +34,7 @@ object Commands : CommandDispatcher<Context>() {
     private val unknownPlayerException = SimpleCommandExceptionType(LiteralMessage("I don't know anyone by that name"))
 
     init {
-        Balance; Send; Florida; Praise; Message
+        Balance; Send; Florida; Praise; Message; JoinMessage
     }
 
     data class Context(val message: ChatMessage, val bot: Bot, val emitter: Emitter) {
@@ -190,6 +190,40 @@ object Commands : CommandDispatcher<Context>() {
                     }
                 }
             }, "w")
+        }
+    }
+
+    object JoinMessage {
+        init {
+            registerAndAlias(rootLiteral("joinmessage") {
+                string("player") {
+                    greedyString("message") {
+                        does {
+                            setMessage(it, "message" from it)
+                        }
+                    }
+                    does {
+                        setMessage(it, null)
+                    }
+                }
+            }, "jm")
+        }
+
+        private fun setMessage(ctx: CommandContext<Context>, message: String?): Int {
+            val cost = incurCost(260, ctx.source.message.sender.uuid)
+
+            Database.connection.use { con ->
+                val recipient = con.getUUID("player" from ctx)
+                    ?: throw unknownPlayerException.create()
+
+                val statement = con.prepare("update users set join_message=? where uuid=?")
+                statement.setString(1, message)
+                statement.setString(2, recipient)
+                statement.executeUpdate()
+            }
+            ctx.source.reply("Thank you. The join message was ${if (message == null) "cleared" else "set"}. In order to cover operating costs, a fee of $cost prayers was deducted from your balance.")
+
+            return SINGLE_SUCCESS
         }
     }
 
