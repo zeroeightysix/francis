@@ -34,10 +34,6 @@ class Francis : Bot {
         }
 
         if (cm.message.startsWith("#")) {
-            // make sure this player is entered into the database
-            // TODO: move to player event (player joins, or bot joins and announces all players)
-            Database.assertUser(sender)
-
             val parse = Commands.parse(cm.message.substring(1), Commands.Context(cm, this, emitter))
             try {
                 Commands.execute(parse)
@@ -56,6 +52,10 @@ class Francis : Bot {
 
     override fun onPlayerOnlineStatus(onlineStatus: PlayerOnlineStatus, emitter: Emitter) {
         val player = onlineStatus.player
+
+        // enter or update this player into the DB if necessary
+        if (onlineStatus.online) Database.assertUser(player)
+
         val now = Instant.now()
         if (!onlineStatus.online) {
             lastLeave[player.uuid] = now
