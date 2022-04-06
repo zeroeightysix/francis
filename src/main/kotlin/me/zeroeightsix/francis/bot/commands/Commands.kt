@@ -34,7 +34,7 @@ object Commands : CommandDispatcher<Context>() {
     private val unknownPlayerException = SimpleCommandExceptionType(LiteralMessage("I don't know anyone by that name"))
 
     init {
-        Balance; Send; Florida; Praise; Message; JoinMessage
+        Balance; Send; Florida; Praise; Message; JoinMessage; Help
     }
 
     data class Context(val message: ChatMessage, val bot: Bot, val emitter: Emitter) {
@@ -224,6 +224,18 @@ object Commands : CommandDispatcher<Context>() {
             ctx.source.reply("Thank you. The join message was ${if (message == null) "cleared" else "set"}. In order to cover operating costs, a fee of $cost prayers was deducted from your balance.")
 
             return SINGLE_SUCCESS
+        }
+    }
+
+    object Help {
+        init {
+            registerAndAlias(rootLiteral("help") {
+                does { ctx ->
+                    ctx.source.reply("https://gist.github.com/zeroeightysix/74165b5a6cba1d1a37e30bd72158f54e", ChatMessage.PM.FORCE_PM)
+
+                    SINGLE_SUCCESS
+                }
+            }, "h")
         }
     }
 
