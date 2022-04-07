@@ -40,8 +40,6 @@ internal class ChatQueue {
                     continue
                 }
 
-                println("now: $now")
-                println("times: ${messageTimes.joinToString()}")
                 var short = 0
                 var shortWindow: Long = 0
                 var med = 0
@@ -71,14 +69,16 @@ internal class ChatQueue {
                 if (long >= 7)
                     wait = max(wait, longWindow)
 
-                log.info(
-                    "Wait duration: $wait (" + when (wait) {
-                        shortWindow -> "short"
-                        medWindow -> "med"
-                        longWindow -> "long"
-                        else -> "other"
-                    } + ")"
-                )
+                if (wait != 0L) {
+                    log.info(
+                        "Wait duration: $wait (" + when (wait) {
+                            shortWindow -> "short"
+                            medWindow -> "med"
+                            longWindow -> "long"
+                            else -> "other"
+                        } + ")"
+                    )
+                }
 
                 Thread.sleep(wait)
 
