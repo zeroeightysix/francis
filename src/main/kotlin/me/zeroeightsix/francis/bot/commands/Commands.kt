@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory
 import registerAndAlias
 import rootLiteral
 import string
+import java.sql.Connection
 import java.time.Duration
 import java.time.Instant
 
@@ -170,9 +171,7 @@ object Commands : CommandDispatcher<Context>() {
                     greedyString("message") {
                         does { ctx ->
                             val sender = ctx.source.message.sender.uuid
-                            val cost = incurCost(60, sender)
-
-                            Database.connection.use { con ->
+                            val cost = Database.connection.use { con ->
                                 val recipient = con.getUUID("player" from ctx)
                                     ?: throw unknownPlayerException.create()
 
@@ -182,6 +181,8 @@ object Commands : CommandDispatcher<Context>() {
                                     recipient,
                                     "message".from<String, Context>(ctx)
                                 ).executeUpdate()
+
+                                con.incurCost(60, sender)
                             }
                             ctx.source.reply("Thank you. Your message will be passed on anonymously. A processing fee of $cost prayers was deducted from your balance.")
 
@@ -210,9 +211,7 @@ object Commands : CommandDispatcher<Context>() {
         }
 
         private fun setMessage(ctx: CommandContext<Context>, message: String?): Int {
-            val cost = incurCost(260, ctx.source.message.sender.uuid)
-
-            Database.connection.use { con ->
+            val cost = Database.connection.use { con ->
                 val recipient = con.getUUID("player" from ctx)
                     ?: throw unknownPlayerException.create()
 
@@ -220,6 +219,8 @@ object Commands : CommandDispatcher<Context>() {
                 statement.setString(1, message)
                 statement.setString(2, recipient)
                 statement.executeUpdate()
+
+                con.incurCost(260, ctx.source.message.sender.uuid)
             }
             ctx.source.reply("Thank you. The join message was ${if (message == null) "cleared" else "set"}. In order to cover operating costs, a fee of $cost prayers was deducted from your balance.")
 
@@ -241,16 +242,20 @@ object Commands : CommandDispatcher<Context>() {
 
     private fun incurCost(baseCost: Int, player: PlayerID): Int {
         return Database.connection.use { con ->
-            val (balance, faith) = con.getBalanceFaith(player)
-                ?: throw RuntimeException("User $player has no db entry")
-
-            val cost = (baseCost.toFloat() * (1f - Faith.calculateDiscount(faith))).toInt()
-            if (cost > balance) throw "You can't afford that! You are ${cost - balance} prayers (out of $cost prayers) short."()
-
-            con.prepare("update users set balance=users.balance+? where uuid=?", -cost, player).execute()
-
-            cost
+            con.incurCost(baseCost, player)
         }
+    }
+
+    private fun Connection.incurCost(baseCost: Int, player: PlayerID): Int {
+        val (balance, faith) = getBalanceFaith(player)
+            ?: throw RuntimeException("User $player has no db entry")
+
+        val cost = (baseCost.toFloat() * (1f - Faith.calculateDiscount(faith))).toInt()
+        if (cost > balance) throw "You can't afford that! You are ${cost - balance} prayers (out of $cost prayers) short."()
+
+        prepare("update users set balance=users.balance+? where uuid=?", -cost, player).execute()
+
+        return cost
     }
 
     private operator fun String.invoke(): CommandSyntaxException {
