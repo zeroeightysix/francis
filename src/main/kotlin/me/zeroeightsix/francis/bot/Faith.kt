@@ -4,13 +4,30 @@ import me.zeroeightsix.francis.ChatMessage
 import kotlin.math.log10
 
 object Faith {
+    private val hateRegex = Regex(
+        """(i\s*(fucking)?\s*(hate|dislike|loathe|resent))\s*(francis|(ro)?bot([ _]francis)?|(the)?\s*(fucking)?\s*(bot|church))""",
+        RegexOption.IGNORE_CASE
+    )
+    private val resentRegex = Regex(
+        """fuck(ing)?\s*(((the)?\s*(ro)?bot)|francis|church)""",
+        RegexOption.IGNORE_CASE
+    )
+    private val dissentPrefixRegex = Regex(
+        """(annoying|irritating|useless|incompetent|weak|stupid|shitty)\s*((ro)?bot([ _]francis)?|church|francis)""",
+        RegexOption.IGNORE_CASE
+    )
+    private val dissentSuffixRegex = Regex(
+        """((ro)?bot|francis|church)(\s*(sucks|idiot|loser|useless|annoying|irritating|weak|stupid)|(.*)(is|it's) (useless|annoying|irritating|weak|stupid))""",
+        RegexOption.IGNORE_CASE
+    )
+
     fun reward(message: ChatMessage): Reward? {
         val text = message.message.lowercase()
-        if (text.contains("hate francis")
-            || text.contains("francis died")
-            || text.contains("francis is dead")
-            || text.contains("killed francis")
-            || (text.contains("francis") && text.contains("is dead"))
+
+        if (hateRegex.containsMatchIn(text)
+            || resentRegex.containsMatchIn(text)
+            || dissentPrefixRegex.containsMatchIn(text)
+            || dissentSuffixRegex.containsMatchIn(text)
         ) {
             return Reward.BAD
         }
