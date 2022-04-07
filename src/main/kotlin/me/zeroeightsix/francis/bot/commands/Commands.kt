@@ -15,6 +15,7 @@ import me.zeroeightsix.francis.PlayerID
 import me.zeroeightsix.francis.bot.Bot
 import me.zeroeightsix.francis.bot.Faith
 import me.zeroeightsix.francis.bot.commands.Commands.Context
+import me.zeroeightsix.francis.bot.commands.TimeoutCache.Companion.toHuman
 import me.zeroeightsix.francis.communicate.Database
 import me.zeroeightsix.francis.communicate.Database.getBalance
 import me.zeroeightsix.francis.communicate.Database.getBalanceFaith
@@ -26,8 +27,6 @@ import registerAndAlias
 import rootLiteral
 import string
 import java.sql.Connection
-import java.time.Duration
-import java.time.Instant
 
 object Commands : CommandDispatcher<Context>() {
 
@@ -106,7 +105,7 @@ object Commands : CommandDispatcher<Context>() {
     }
 
     object Praise {
-        private val rewardedAt = HashMap<PlayerID, Instant>()
+        private val cache = TimeoutCache()
         private const val rewardTimeout = 12 * 60 * 60L // 12 hours
 
         init {
@@ -114,16 +113,12 @@ object Commands : CommandDispatcher<Context>() {
                 does { ctx ->
                     val sender = ctx.source.message.sender
                     // if the timeout is still in effect, quit
-                    rewardedAt[sender.uuid]?.plusSeconds(rewardTimeout)?.let { expire ->
-                        val now = Instant.now()
-                        if (expire.isAfter(now)) {
-                            val time = Duration.between(now, expire)
-                            throw "Too early! You need to wait ${time.toHours()} hours and ${time.toMinutesPart()} minutes before praising once more."()
-                        }
+                    cache.getTimeout(sender.uuid, rewardTimeout)?.let {
+                        throw "Too early! You need to wait ${it.toHuman()} before praising once more."()
                     }
 
                     // place a new timeout
-                    rewardedAt[sender.uuid] = Instant.now()
+                    cache.placeTimeout(sender.uuid)
 
                     // award the player
                     Database.connection.use { con ->

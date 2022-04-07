@@ -6,6 +6,7 @@ import me.zeroeightsix.francis.Player
 import me.zeroeightsix.francis.PlayerID
 import me.zeroeightsix.francis.PlayerOnlineStatus
 import me.zeroeightsix.francis.bot.commands.Commands
+import me.zeroeightsix.francis.bot.commands.TimeoutCache
 import me.zeroeightsix.francis.communicate.Database
 import me.zeroeightsix.francis.communicate.Database.getJoinMessage
 import me.zeroeightsix.francis.communicate.Database.prepare
@@ -15,8 +16,8 @@ import java.time.Instant
 
 class Francis : Bot {
 
+    private val rewardCache = TimeoutCache()
     private val rewardTimeout = 5 * 60L // 5 minutes
-    private val rewardedAt = HashMap<PlayerID, Instant>()
     private val lastLeave = HashMap<PlayerID, Instant>()
     private val log = LoggerFactory.getLogger("bot")
     private val queue = ChatQueue().apply {
@@ -101,10 +102,7 @@ class Francis : Bot {
 
     private fun reward(sender: Player, reward: Faith.Reward) {
         // if the timeout is still in effect, quit
-        if (rewardedAt[sender.uuid]?.plusSeconds(rewardTimeout)?.isAfter(Instant.now()) == true) return
-
-        // place a new timeout
-        rewardedAt[sender.uuid] = Instant.now()
+        if (!rewardCache.tryPerform(sender.uuid, rewardTimeout)) return
 
         // award the player
         Database.connection.use {
