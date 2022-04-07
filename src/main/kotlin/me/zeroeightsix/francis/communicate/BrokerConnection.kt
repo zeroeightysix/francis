@@ -50,7 +50,7 @@ class BrokerConnection(config: Config, bot: Bot) : Emitter {
                 log.error("Failed processing command", e)
                 emitChat(
                     message.reply(
-                        "I'm sorry, an error occurred. Please contact a church official",
+                        "I'm sorry, an error occurred. Please contact a church official!",
                         ChatMessage.PM.FORCE_PM
                     )
                 )
