@@ -27,6 +27,10 @@ import registerAndAlias
 import rootLiteral
 import string
 import java.sql.Connection
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.pow
+import kotlin.math.sqrt
 
 object Commands : CommandDispatcher<Context>() {
 
@@ -34,7 +38,7 @@ object Commands : CommandDispatcher<Context>() {
     private val unknownPlayerException = SimpleCommandExceptionType(LiteralMessage("I don't know anyone by that name"))
 
     init {
-        Balance; Send; Florida; Praise; Message; JoinMessage; Help
+        Balance; Send; Florida; Praise; Message; JoinMessage; Help; Sinner
     }
 
     data class Context(val message: ChatMessage, val bot: Bot, val emitter: Emitter) {
@@ -150,7 +154,10 @@ object Commands : CommandDispatcher<Context>() {
 
                             val line = lines.random()
                             ctx.source.reply(line, ChatMessage.PM.FORCE_PUBLIC)
-                            ctx.source.reply("Thank you for spreading the news. An editorial fee of $cost prayers was deducted from your balance.", ChatMessage.PM.FORCE_PM)
+                            ctx.source.reply(
+                                "Thank you for spreading the news. An editorial fee of $cost prayers was deducted from your balance.",
+                                ChatMessage.PM.FORCE_PM
+                            )
 
                             SINGLE_SUCCESS
                         }
@@ -227,11 +234,80 @@ object Commands : CommandDispatcher<Context>() {
         init {
             registerAndAlias(rootLiteral("help") {
                 does { ctx ->
-                    ctx.source.reply("https://gist.github.com/zeroeightysix/74165b5a6cba1d1a37e30bd72158f54e", ChatMessage.PM.FORCE_PM)
+                    ctx.source.reply(
+                        "https://gist.github.com/zeroeightysix/74165b5a6cba1d1a37e30bd72158f54e",
+                        ChatMessage.PM.FORCE_PM
+                    )
 
                     SINGLE_SUCCESS
                 }
             }, "h")
+        }
+    }
+
+    object Sinner {
+        private val timeoutCache = TimeoutCache()
+        private const val timeout = 4 * 60 * 60L // 4 hours
+
+        private fun createNormalMessage(cost: Int) = arrayOf(
+            "Duly noted. An offering of $cost prayers was removed from your balance.",
+            "We take your accusation seriously. In the form of expiation, you paid $cost prayers for this action.",
+            "We appreciate your donation of $cost prayers. In return, we'll be wary of that player."
+        ).random()
+
+        private fun createLargeMessage(cost: Int) = arrayOf(
+            "We appreciate your charitable donation of $cost prayers. The church will record this information carefully.",
+            "This information is immensely helpful to us. Because of your large contribution of $cost prayers, we are sure to act upon this matter.",
+            "Thank you for your lavish handout of $cost prayers. That player will surely be condemned."
+        ).random()
+
+        private fun createHugeMessage(cost: Int) = arrayOf(
+            "Oh, my! $cost prayers? A gift of grace! Your complaint will be handled, immediately.",
+            "The church is honoured to receive your gift of $cost prayers. I will take action immediately.",
+            "Such benefaction! At the cost of $cost prayers, that player will definitely be dealt with."
+        ).random()
+
+        init {
+            register(rootLiteral("sinner") {
+                string("player") {
+                    does { ctx ->
+                        val sender = ctx.source.message.sender.uuid
+                        timeoutCache.getTimeout(sender, timeout)?.let {
+                            throw "Patience, young one. You may relay this information to me in ${it.toHuman()}."()
+                        }
+                        timeoutCache.placeTimeout(sender)
+
+                        val recipient: PlayerID
+
+                        val cost = Database.connection.use { con ->
+                            recipient = con.getUUID("player" from ctx)
+                                ?: throw unknownPlayerException.create()
+
+                            val baseCost = min(max((con.getBalance(sender) * 0.1).toInt(), 50), 5000)
+                            val cost = incurCost(baseCost, sender)
+
+                            val strength = sqrt(1 - ((cost / 5000f) - 1).pow(2))
+                            con.prepare(
+                                "update users set faith=users.faith + (? - users.faith) * ? where uuid=?",
+                                -1f,
+                                strength,
+                                recipient
+                            ).executeUpdate()
+
+                            cost
+                        }
+
+                        val message = when (cost) {
+                            in 0..150 -> createNormalMessage(cost)
+                            in 150..650 -> createLargeMessage(cost)
+                            else -> createHugeMessage(cost)
+                        }
+                        ctx.source.reply(message)
+
+                        SINGLE_SUCCESS
+                    }
+                }
+            })
         }
     }
 
