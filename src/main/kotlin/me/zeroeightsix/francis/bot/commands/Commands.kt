@@ -150,7 +150,9 @@ object Commands : CommandDispatcher<Context>() {
                 ?.let { lines ->
                     register(rootLiteral("florida") {
                         does { ctx: CommandContext<Context> ->
-                            val cost = incurCost(90, ctx.source.message.sender.uuid)
+                            val cost = Database.connection.use {
+                                it.incurCost(90, ctx.source.message.sender.uuid)
+                            }
 
                             val line = lines.random()
                             ctx.source.reply(line, ChatMessage.PM.FORCE_PUBLIC)
@@ -284,7 +286,7 @@ object Commands : CommandDispatcher<Context>() {
                                 ?: throw unknownPlayerException.create()
 
                             val baseCost = min(max((con.getBalance(sender) * 0.1).toInt(), 50), 5000)
-                            val cost = incurCost(baseCost, sender)
+                            val cost = con.incurCost(baseCost, sender)
 
                             val strength = sqrt(1 - ((cost / 5000f) - 1).pow(2))
                             con.prepare(
@@ -308,12 +310,6 @@ object Commands : CommandDispatcher<Context>() {
                     }
                 }
             })
-        }
-    }
-
-    private fun incurCost(baseCost: Int, player: PlayerID): Int {
-        return Database.connection.use { con ->
-            con.incurCost(baseCost, player)
         }
     }
 
