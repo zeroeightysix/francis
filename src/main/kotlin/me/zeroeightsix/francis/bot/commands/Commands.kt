@@ -22,6 +22,7 @@ import me.zeroeightsix.francis.communicate.Database.getBalanceFaith
 import me.zeroeightsix.francis.communicate.Database.getUUID
 import me.zeroeightsix.francis.communicate.Database.prepare
 import me.zeroeightsix.francis.communicate.Emitter
+import me.zeroeightsix.francis.interpret
 import org.slf4j.LoggerFactory
 import registerAndAlias
 import rootLiteral
@@ -38,7 +39,7 @@ object Commands : CommandDispatcher<Context>() {
     private val unknownPlayerException = SimpleCommandExceptionType(LiteralMessage("I don't know anyone by that name"))
 
     init {
-        Balance; Send; Florida; Praise; Message; JoinMessage; Help; Sinner
+        Balance; TopBalance; Send; Florida; Praise; Message; JoinMessage; Help; Sinner
     }
 
     data class Context(val message: ChatMessage, val bot: Bot, val emitter: Emitter) {
@@ -50,6 +51,21 @@ object Commands : CommandDispatcher<Context>() {
     object Balance {
         init {
             registerAndAlias(rootLiteral("balance") {
+                string("player") {
+                    does { ctx ->
+                        val recipientUsername: String = "player" from ctx
+
+                        val balance = Database.connection.use { con ->
+                            con.prepare("select balance from users where username=?", recipientUsername)
+                                .executeQuery()
+                                .run { if (next()) getInt("balance") else throw unknownPlayerException.create() }
+                        }
+                        ctx.source.reply("$recipientUsername has $balance prayers available.")
+
+                        SINGLE_SUCCESS
+                    }
+                }
+
                 does {
                     val balance = Database.connection.use { con ->
                         con.getBalance(it.source.message.sender.uuid)
@@ -59,6 +75,27 @@ object Commands : CommandDispatcher<Context>() {
                     SINGLE_SUCCESS
                 }
             }, "b", "bal")
+        }
+    }
+
+    object TopBalance {
+        init {
+            registerAndAlias(rootLiteral("topbal") {
+                does {
+                    data class Result(val username: String, val balance: Int)
+
+                    val list = Database.connection.use { con ->
+                        con.prepare("select username, balance from users order by balance desc limit 5")
+                            .executeQuery()
+                            .interpret<Result>()
+                            .joinToString { (username, balance) -> "$username ($balance)" }
+                    }
+
+                    it.source.reply("Top balances are: $list")
+
+                    SINGLE_SUCCESS
+                }
+            }, "topbalance")
         }
     }
 

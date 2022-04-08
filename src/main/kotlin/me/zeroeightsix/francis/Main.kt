@@ -8,6 +8,9 @@ import me.zeroeightsix.francis.communicate.BrokerConnection
 import me.zeroeightsix.francis.communicate.Database
 import java.nio.file.Files
 import java.nio.file.Path
+import java.sql.ResultSet
+import kotlin.reflect.KParameter
+import kotlin.reflect.jvm.jvmErasure
 
 typealias PlayerID = String
 
@@ -16,6 +19,24 @@ fun main() {
     Database.init(config)
 
     BrokerConnection(config, Francis())
+}
+
+inline fun <reified T> ResultSet.interpret(): List<T> {
+    if (!T::class.isData) throw RuntimeException("${T::class.simpleName} must be a data class")
+    val cons = T::class.constructors.first()
+
+    val mapper: Map<KParameter, ResultSet.() -> Any> = cons.parameters.associateWith {
+        when (it.type.jvmErasure.java) {
+            Int::class.java -> ({ getInt(it.name) })
+            Long::class.java -> ({ getLong(it.name) })
+            String::class.java -> ({ getString(it.name) })
+            else -> TODO()
+        }
+    }
+
+    val list = arrayListOf<T>()
+    while (next()) list += cons.callBy(mapper.mapValues { this.(it.value)() })
+    return list
 }
 
 @Serializable

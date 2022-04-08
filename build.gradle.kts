@@ -41,4 +41,6 @@ dependencies {
     implementation("org.mariadb.jdbc:mariadb-java-client:3.0.4")
     implementation("ch.qos.logback:logback-classic:1.2.11")
     implementation("com.mojang:brigadier:1.0.18")
+
+    implementation("org.jetbrains.kotlin:kotlin-reflect:1.6.20")
 }
