@@ -18,7 +18,6 @@ import me.zeroeightsix.francis.bot.commands.Commands.Context
 import me.zeroeightsix.francis.bot.commands.TimeoutCache.Companion.toHuman
 import me.zeroeightsix.francis.communicate.Database
 import me.zeroeightsix.francis.communicate.Database.getBalance
-import me.zeroeightsix.francis.communicate.Database.getBalanceFaith
 import me.zeroeightsix.francis.communicate.Database.getUUID
 import me.zeroeightsix.francis.communicate.Database.prepare
 import me.zeroeightsix.francis.communicate.Emitter
@@ -39,7 +38,7 @@ object Commands : CommandDispatcher<Context>() {
     private val unknownPlayerException = SimpleCommandExceptionType(LiteralMessage("I don't know anyone by that name"))
 
     init {
-        Balance; TopBalance; Send; Florida; Praise; Message; JoinMessage; Help; Sinner
+        Balance; TopBalance; Send; Florida; Praise; Message; JoinMessage; Help; Sinner; Flip
     }
 
     data class Context(val message: ChatMessage, val bot: Bot, val emitter: Emitter) {
@@ -351,7 +350,9 @@ object Commands : CommandDispatcher<Context>() {
     }
 
     private fun Connection.incurCost(baseCost: Int, player: PlayerID): Int {
-        val (balance, faith) = getBalanceFaith(player)
+        val (balance, faith) = prepare("select balance, faith from users where uuid=?", player)
+            .executeQuery()
+            .run { if (next()) getInt("balance") to getFloat("faith") else null }
             ?: throw RuntimeException("User $player has no db entry")
 
         val cost = (baseCost.toFloat() * (1f - Faith.calculateDiscount(faith))).toInt()
