@@ -1,5 +1,5 @@
-/.idea
-/config.json
-/build
-/.gradle
-/out
+.idea
+config.json
+build
+.gradle
+out
