@@ -1,0 +1,24 @@
+{
+  "dependencies": {
+    "amqp-connection-manager": "^4.1.1",
+    "amqplib": "^0.8.0",
+    "mineflayer": "^4.2.0",
+    "prismarine-chat": "^1.6.0",
+    "prismarine-viewer": "^1.22.0"
+  },
+  "name": "francis-minecraft",
+  "version": "1.0.0",
+  "description": "Minecraft bot for the Francis Ecosystem",
+  "main": "index.js",
+  "devDependencies": {
+    "@types/node": "^17.0.23",
+    "ts-node": "^10.7.0",
+    "tslib": "^2.3.1",
+    "typescript": "^4.6.3"
+  },
+  "scripts": {
+    "start": "node --require ts-node/register src/bot.ts"
+  },
+  "author": "Ridan Vandenbergh",
+  "license": "ISC"
+}
