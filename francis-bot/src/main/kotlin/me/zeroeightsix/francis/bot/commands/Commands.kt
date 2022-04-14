@@ -38,7 +38,7 @@ object Commands : CommandDispatcher<Context>() {
     private val unknownPlayerException = SimpleCommandExceptionType(LiteralMessage("I don't know anyone by that name"))
 
     init {
-        Balance; TopBalance; Send; Florida; Praise; Message; JoinMessage; Help; Sinner; Flip
+        Balance; TopBalance; Send; Florida; Praise; Message; JoinMessage; Help; Sinner
     }
 
     data class Context(val message: ChatMessage, val bot: Bot, val emitter: Emitter) {
