@@ -69,12 +69,17 @@ class Francis {
                 'private',
                 /^(\w+) whispers to you: (.*)$/,
                 {parse: true, repeat: true}
-            )
+            );
             bot.addChatPattern(
                 'private',
                 /^<--(\w+): (.*)$/,
                 {parse: true, repeat: true}
-            )
+            );
+            bot.addChatPattern(
+                'server',
+                /^\[Server] (.*)$/,
+                {parse: true, repeat: true}
+            );
 
             ch.publish('events', 'connected', <ConnectMessage> {
                 botId
@@ -90,6 +95,19 @@ class Francis {
 // noinspection TypeScriptValidateJSTypes
         bot.on('chat:private', async ([[username, message]]: [[string, string]]) => {
             await ch.publish('chat', 'incoming.private', this.newMessage(message, username, this.context.username));
+        });
+// noinspection TypeScriptValidateJSTypes
+        bot.on('chat:server', async ([[message]]: [[string, string]]) => {
+            await ch.publish('chat', 'incoming.private', this.newMessage(message, "Server", this.context.username));
+            await ch.publish('chat', 'incoming.private', <ChatMessage> {
+                message,
+                sender: <Player> {
+                    username: "Server",
+                    uuid: "4dbd97e5-8487-429f-875d-3bb2860eb041"
+                },
+                context: this.context,
+                recipient: null
+            });
         });
 
         bot.on('playerJoined', async (player: Player) => {
