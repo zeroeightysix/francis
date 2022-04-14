@@ -39,9 +39,17 @@ class Francis : Bot {
             try {
                 Commands.execute(parse)
             } catch (e: CommandSyntaxException) {
+                // If nodes is empty, no root command was matched. We assume the user did not mean to use the bot.
+                if (parse.context.nodes.isEmpty()) return
+
+                val error = if (parse.exceptions.isEmpty()) e.message ?: "I'm sorry, but I couldn't process your command."
+                else "Missing an argument. Use: #" +
+                        parse.context.nodes.joinToString(separator = " ") { it.node.name } + " <" +
+                        parse.context.nodes.last().node.children.joinToString(separator = "|") { it.name } + ">"
+
                 schedule(
                     cm.reply(
-                        e.message ?: "I'm sorry, but I couldn't process your command.",
+                        error,
                         ChatMessage.PM.FORCE_PM
                     ),
                     emitter
@@ -80,8 +88,8 @@ class Francis : Bot {
 
             // fetch messages for this user
             Database.connection.use { con ->
-                val set =
-                    con.prepare("select message from messages where delivered=0 and recipient=?", player.uuid).executeQuery()
+                val set = con.prepare("select message from messages where delivered=0 and recipient=?", player.uuid)
+                    .executeQuery()
 
                 var empty = true
                 while (set.next()) {
