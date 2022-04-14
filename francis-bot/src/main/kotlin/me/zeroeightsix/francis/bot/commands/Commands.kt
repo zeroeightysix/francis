@@ -27,6 +27,7 @@ import registerAndAlias
 import rootLiteral
 import string
 import java.sql.Connection
+import java.time.Instant
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
@@ -146,14 +147,14 @@ object Commands : CommandDispatcher<Context>() {
 
     object Praise {
         private val cache = TimeoutCache()
-        private const val rewardTimeout = 12 * 60 * 60L // 12 hours
+        private const val TIMEOUT = 12 * 60 * 60L // 12 hours
 
         init {
             registerAndAlias(rootLiteral("praise") {
                 does { ctx ->
                     val sender = ctx.source.message.sender
                     // if the timeout is still in effect, quit
-                    cache.getTimeout(sender.uuid, rewardTimeout)?.let {
+                    cache.getTimeout(sender.uuid, TIMEOUT)?.let {
                         throw "Too early! You need to wait ${it.toHuman()} before praising once more."()
                     }
 
@@ -179,6 +180,9 @@ object Commands : CommandDispatcher<Context>() {
     }
 
     object Florida {
+        private var lastFlorida: Instant? = null
+        private const val TIMEOUT = 20 * 60L
+
         init {
             this::class.java.classLoader.getResource("florida.txt")
                 ?.readText()
@@ -186,14 +190,27 @@ object Commands : CommandDispatcher<Context>() {
                 ?.let { lines ->
                     register(rootLiteral("florida") {
                         does { ctx: CommandContext<Context> ->
-                            val cost = Database.connection.use {
-                                it.incurCost(90, ctx.source.message.sender.uuid)
-                            }
+                            val now = Instant.now()
+                            if (lastFlorida?.plusSeconds(TIMEOUT)?.isAfter(now) == true)
+                                throw "Sorry, our editors are still working on the next headline."()
+                            lastFlorida = now
 
                             val line = lines.random()
                             ctx.source.reply(line, ChatMessage.PM.FORCE_PUBLIC)
+
+                            val counter = Database.connection.use { con ->
+                                val uuid = ctx.source.message.sender.uuid
+                                con.prepare(
+                                    "insert into florida values (?, 1) on duplicate key update floridas=floridas+1",
+                                    uuid
+                                ).execute()
+                                con.prepare("select floridas from florida where user=?", uuid)
+                                    .executeQuery()
+                                    .run { next(); getInt("floridas") }
+                            }
+
                             ctx.source.reply(
-                                "Thank you for spreading the news. An editorial fee of $cost prayers was deducted from your balance.",
+                                "Thank you for spreading the news. Your florida counter is now at $counter.",
                                 ChatMessage.PM.FORCE_PM
                             )
 
@@ -285,7 +302,7 @@ object Commands : CommandDispatcher<Context>() {
 
     object Sinner {
         private val timeoutCache = TimeoutCache()
-        private const val timeout = 4 * 60 * 60L // 4 hours
+        private const val TIMEOUT = 4 * 60 * 60L // 4 hours
 
         private fun createNormalMessage(cost: Int) = arrayOf(
             "Duly noted. An offering of $cost prayers was removed from your balance.",
@@ -310,7 +327,7 @@ object Commands : CommandDispatcher<Context>() {
                 string("player") {
                     does { ctx ->
                         val sender = ctx.source.message.sender.uuid
-                        timeoutCache.getTimeout(sender, timeout)?.let {
+                        timeoutCache.getTimeout(sender, TIMEOUT)?.let {
                             throw "Patience, young one. You may relay this information to me in ${it.toHuman()}."()
                         }
                         timeoutCache.placeTimeout(sender)

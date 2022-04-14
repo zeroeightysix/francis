@@ -10,7 +10,7 @@ import java.sql.Connection
 import java.sql.PreparedStatement
 
 object Database {
-    
+
     private lateinit var ds: HikariDataSource
     val connection: Connection
         get() = ds.connection
@@ -29,7 +29,8 @@ object Database {
         // create tables if not exists
         val con = ds.connection
         con.prepareStatement(
-            """create table if not exists users
+            """
+create table if not exists users
 (
     uuid         varchar(36)                          not null
         primary key,
@@ -44,7 +45,8 @@ object Database {
         ).execute()
         con.prepareStatement("create index if not exists users_uuid on users (uuid);").execute()
         con.prepareStatement(
-            """create table if not exists messages
+            """
+create table if not exists messages
 (
     sender    varchar(36)          not null,
     recipient varchar(36)          not null,
@@ -56,6 +58,18 @@ object Database {
         foreign key (sender) references users (uuid)
 );
 """
+        ).execute()
+        con.prepareStatement(
+            """
+create table if not exists florida
+(
+    user     varchar(36)   not null
+        primary key,
+    floridas int default 0 not null,
+    constraint table_name_user_uindex
+        unique (user)
+);
+        """
         ).execute()
     }
 
