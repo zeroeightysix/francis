@@ -139,20 +139,26 @@ class Francis {
         bot.on('kicked', async (reason: string, loggedIn: boolean) => {
             console.info("Kicked", {reason, loggedIn})
 
-            this.live = false;
-
-            await ch.publish('events', 'disconnected', <DisconnectedMessage> {
-                botId,
-                context: this.context,
-                reason,
-                loggedIn,
-            });
+            await this.endSession(reason, loggedIn);
         })
         bot.on('end', async (reason: string) => {
             console.info({reason})
+
+            await this.endSession(reason, true);
         })
 
         this.bot = bot;
+    }
+
+    private async endSession(reason: string, loggedIn: boolean) {
+        this.live = false;
+
+        await ch.publish('events', 'disconnected', <DisconnectedMessage>{
+            botId,
+            context: this.context,
+            reason,
+            loggedIn,
+        });
     }
 
     newMessage(message: string, sender: string, recipient: string | null = null): ChatMessage {
