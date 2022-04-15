@@ -144,7 +144,9 @@ class Francis {
         bot.on('end', async (reason: string) => {
             console.info({reason})
 
-            await this.endSession(reason, true);
+            if (this.live) {
+                await this.endSession(reason, true);
+            }
         })
 
         this.bot = bot;
