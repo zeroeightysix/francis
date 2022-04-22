@@ -28,6 +28,8 @@ val disconnects = HashMap<Long, Message>()
 var lastContext: Player? = null
 var lastId: Long? = null
 
+val players = HashSet<String>()
+
 val linkCode = HashMap<String, Long>()
 
 fun main() {
@@ -41,6 +43,7 @@ fun main() {
     jda.updateCommands {
         slash("connect", "Instruct the bot to (re)connect to the server in case the button doesn't work")
         slash("linkminecraft", "Link your minecraft account with discord")
+        slash("players", "Show the online players")
     }.queue()
 
     lateinit var textChannel: TextChannel
@@ -82,6 +85,18 @@ fun main() {
 
                 it.reply("Whisper the in-game bot the following code to link your accounts: `$code`").setEphemeral(true)
                     .await()
+            }
+            "players" -> {
+                val width = players.maxOf { n -> n.length } + 1
+                val table = players.chunked(2).joinToString("\n") { p ->
+                    p[0].padEnd(width) + (p.getOrNull(1) ?: "")
+                }
+
+                it.replyEmbeds(Embed {
+                    title = "${players.size} players"
+                    description = MarkdownUtil.codeblock(table)
+                })
+                    .setEphemeral(true).await()
             }
         }
     }
@@ -138,6 +153,7 @@ fun main() {
     }
 
     broker.on<DisconnectedMessage>(EVENTS, "disconnected") { dm ->
+        players.clear()
         lastId = dm.botId
 
         val button = jda.button(
@@ -184,6 +200,12 @@ fun main() {
     }
 
     broker.on<PlayerOnlineStatus>(PLAYERS, "join", "leave") { status ->
+        if (status.online) {
+            players.add(status.player.username)
+        } else {
+            players.remove(status.player.username)
+        }
+
         if (status.discovery) return@on
 
         val username = escape(status.player.username.replace("_", "\\_"))
