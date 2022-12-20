@@ -74,6 +74,11 @@ class Francis : Bot {
                 // Send their JM, if any
                 Database.connection.use { con ->
                     con.getJoinMessage(player.uuid)?.let { jm ->
+                        val jm = if (jm.startsWith('/')) {
+                            ".$jm"
+                        } else {
+                            jm
+                        }
                         schedule(
                             ChatMessage(
                                 onlineStatus.context,
