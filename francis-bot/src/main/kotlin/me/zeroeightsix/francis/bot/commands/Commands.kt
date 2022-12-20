@@ -232,6 +232,8 @@ object Commands : CommandDispatcher<Context>() {
                                 val recipient = con.getUUID("player" from ctx)
                                     ?: throw unknownPlayerException.create()
 
+                                val c = con.incurCost(60, sender)
+
                                 con.prepare(
                                     "insert into messages (sender, recipient, message) values (?, ?, ?)",
                                     sender,
@@ -239,7 +241,7 @@ object Commands : CommandDispatcher<Context>() {
                                     "message".from<String, Context>(ctx)
                                 ).executeUpdate()
 
-                                con.incurCost(60, sender)
+                                c
                             }
                             ctx.source.reply("Thank you. Your message will be passed on anonymously. A processing fee of $cost prayers was deducted from your balance.")
 
@@ -272,12 +274,14 @@ object Commands : CommandDispatcher<Context>() {
                 val recipient = con.getUUID("player" from ctx)
                     ?: throw unknownPlayerException.create()
 
+                val c = con.incurCost(260, ctx.source.message.sender.uuid)
+
                 val statement = con.prepare("update users set join_message=? where uuid=?")
                 statement.setString(1, message)
                 statement.setString(2, recipient)
                 statement.executeUpdate()
 
-                con.incurCost(260, ctx.source.message.sender.uuid)
+                c
             }
             ctx.source.reply("Thank you. The join message was ${if (message == null) "cleared" else "set"}. In order to cover operating costs, a fee of $cost prayers was deducted from your balance.")
 
